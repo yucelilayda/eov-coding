@@ -1091,28 +1091,9 @@
       </div>
     </div>
 
-    <div class="module" id="evidence-module">
-      <div class="module-head">
-        <span class="module-index">TASK 1</span>
-        <span class="module-title" id="evidence-title">Evidence in the text</span>
-      </div>
-      <div class="module-body">
-        <div class="rule-box">
-          <span class="tag" id="evidence-tag">C2</span>
-          <span id="evidence-rule"></span>
-        </div>
-        <div class="evidence-box">
-          <textarea id="evidence-quote" placeholder="Select the sentence(s) in the text and click “Use as evidence,” or type it here, in German, verbatim…"></textarea>
-          <div class="evidence-hint">A few words, a phrase, a whole sentence, or several separate spans joined together — it doesn't have to be one complete sentence.</div>
-          <div class="evidence-hint">Highlighted something by mistake? Click the highlighted text itself to remove it.</div>
-          <label class="no-quote-row" id="no-quote-row"><input type="checkbox" id="no-quote-cb"> No sentence in the text states the vote. I place the MP from other parts of the text.</label>
-        </div>
-      </div>
-    </div>
-
     <div class="module" id="category-module">
       <div class="module-head">
-        <span class="module-index">TASK 2</span>
+        <span class="module-index">TASK 1</span>
         <span class="module-title">Position category</span>
       </div>
       <div class="module-body">
@@ -1139,6 +1120,25 @@
           </button>
         </div>
         <div class="contra-note" id="contra-note" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="module" id="evidence-module">
+      <div class="module-head">
+        <span class="module-index">TASK 2</span>
+        <span class="module-title" id="evidence-title">Evidence in the text</span>
+      </div>
+      <div class="module-body">
+        <div class="rule-box">
+          <span class="tag" id="evidence-tag">C2</span>
+          <span id="evidence-rule"></span>
+        </div>
+        <div class="evidence-box">
+          <textarea id="evidence-quote" placeholder="Select the sentence(s) in the text and click “Use as evidence,” or type it here, in German, verbatim…"></textarea>
+          <div class="evidence-hint">A few words, a phrase, a whole sentence, or several separate spans joined together — it doesn't have to be one complete sentence.</div>
+          <div class="evidence-hint">Highlighted something by mistake? Click the highlighted text itself to remove it.</div>
+          <label class="no-quote-row" id="no-quote-row"><input type="checkbox" id="no-quote-cb"> No sentence in the text states the vote. I place the MP from other parts of the text.</label>
+        </div>
       </div>
     </div>
 
@@ -1172,7 +1172,7 @@
       <span><b id="f3-target">Reasons (Q1)</b><br><span class="muted" id="f3-hint">Select words in the text, then click the button that appears. Click a highlight to remove it.</span></span>
     </div>
 
-    <div class="rule-box" style="margin-bottom:0.9rem"><span class="tag">G3</span><span><b>One answer per statement.</b> Answer every question once for the whole statement, taking all the reasons you highlighted together. If different reasons say different things, tick every option that applies, or answer Mixed.</span></div>
+    <div class="rule-box" style="margin-bottom:0.9rem"><span class="tag">G3</span><span><b>One answer per statement.</b> Answer every question once for the whole statement, covering the whole text. The reasons you highlight in Task 1 are recorded separately and do not limit the other questions. If different passages say different things, tick every option that applies, or answer Mixed. If different reasons say different things, tick every option that applies, or answer Mixed.</span></div>
 
     <div id="f3-modules"></div>
 
@@ -1691,7 +1691,7 @@
     refreshSuggestion();
     positionConfirmBtn.classList.toggle('ready', ready);
     if(!ready){
-      positionRecordValue.innerHTML = '<em>' + (readFromText(kind0) ? 'quote the vote sentence (or tick that none states it) and pick a category' : (s.category === 'Yes-But' && !s.evidenceQuote.trim() ? 'quote the reservation (needed for Yes-But)' : 'pick a category')) + '</em>';
+      positionRecordValue.innerHTML = '<em>' + (readFromText(kind0) ? 'pick a category, then quote the vote sentence (or tick that none states it)' : (s.category === 'Yes-But' && !s.evidenceQuote.trim() ? 'quote the reservation (needed for Yes-But)' : 'pick a category')) + '</em>';
       return;
     }
     var item = curItem();
@@ -1766,12 +1766,12 @@
     if(readFromText(kind)){
       ruleEl.textContent = (kind === 'noballots' ? 'No ballots were found for this vote, so neither the MP\'s vote nor the line is supplied: read both from the text. ' : 'The Fraktion\'s raw votes and the line are supplied. The MP\'s own recorded vote could not be found for this text, so you read it from the text. ') + ' Defection means breaking with the MP\'s own Fraktion\'s line, full stop, whether or not that party sits in government.';
       evTitle.textContent = 'MP\'s vote statement'; evTag.textContent = 'C2';
-      evRule.textContent = 'Locate the sentence(s) where the text reports the MP\'s own vote. Select it in the text and click "Use as evidence," or type it below. If no sentence states the vote, place the MP from the rest of the text (the reasons, the wording, what the text says about the party) and tick the box below. Choose Unknown Position only if nothing in the whole text lets you tell whether the MP voted with or against the line.';
+      evRule.textContent = 'Now point to your evidence. Locate the sentence(s) where the text reports the MP\'s own vote. Select it in the text and click "Use as evidence," or type it below. If no sentence states the vote, place the MP from the rest of the text (the reasons, the wording, what the text says about the party) and tick the box below. Choose Unknown Position only if nothing in the whole text lets you tell whether the MP voted with or against the line.';
       nqRow.style.display = '';
     } else {
       ruleEl.textContent = 'The MP\'s own recorded vote, the Fraktion\'s raw votes and the line they define are supplied. The comparison uses raw votes only: whether the motion passed, who proposed it and what Yes means do not enter it; they tell you what was voted on so that you can read the text. The same vote as the line is Loyalty or Yes-But; a different vote is Defection; no line is U-POS. The text need not mention the party. Defection means breaking with the MP\'s own Fraktion\'s line, full stop, whether or not that party sits in government.';
       evTitle.textContent = 'Reservation in the text'; evTag.textContent = 'YES-BUT';
-      evRule.textContent = 'If the text states a reservation, criticism or condition toward the party position, select that sentence and click "Use as evidence," or type it below. This is required for Yes-But and optional otherwise.';
+      evRule.textContent = 'Required if you chose Yes-But: select the sentence that states the reservation, criticism or condition toward the party position, and click "Use as evidence," or type it below. For the other categories it is optional.';
       nqRow.style.display = 'none';
     }
     // no line (fraktionslos / no clear majority): U-POS is set automatically, nothing to code
@@ -1781,11 +1781,28 @@
     if(auto){ var st = curState(); st.category = 'U-POS'; st.noQuoteInText = true; st.evidenceQuote = ''; }
   }
 
+  // Federal governments by date (sworn in -> next government). The coalition is looked up
+  // from the date of the vote, not from the Wahlperiode: WP20 changed government on 6 Nov 2024.
+  var GOVERNMENTS = [
+    {from:'2013-12-17', to:'2018-03-14', parties:'CDU/CSU · SPD', note:'Merkel III'},
+    {from:'2018-03-14', to:'2021-12-08', parties:'CDU/CSU · SPD', note:'Merkel IV'},
+    {from:'2021-12-08', to:'2024-11-06', parties:'SPD · BÜNDNIS 90/DIE GRÜNEN · FDP', note:'Scholz'},
+    {from:'2024-11-06', to:'2025-05-06', parties:'SPD · BÜNDNIS 90/DIE GRÜNEN', note:'minority government after the FDP left, 6 Nov 2024'},
+    {from:'2025-05-06', to:'9999-12-31', parties:'CDU/CSU · SPD', note:'Merz'}
+  ];
+  function governmentAt(datum){
+    if(!datum) return null;
+    var d = String(datum).slice(0,10);
+    for(var i=0;i<GOVERNMENTS.length;i++) if(d >= GOVERNMENTS[i].from && d < GOVERNMENTS[i].to) return GOVERNMENTS[i];
+    return null;
+  }
   function renderItem(){
     var item = curItem();
+    var gov = governmentAt(item.vote_datum);
     docMeta.innerHTML =
       '<span>WP <b>'+item.wahlperiode+'</b></span>'+
       '<span>Fraktion <b>'+escapeHtml(item.fraktion)+'</b></span>'+
+      '<span>Governing coalition at the vote ('+escapeHtml(String(item.vote_datum||'').slice(0,10))+') <b>'+(gov ? escapeHtml(gov.parties) : 'not available')+'</b>'+(gov && gov.note.indexOf('minority')>-1 ? ' <i>('+escapeHtml(gov.note)+')</i>' : '')+'</span>'+
       '<span>Abstimmung <b>'+escapeHtml(item.vote_titel || '')+'</b></span>'+
       '<span>§31 GO-BT · Erklärung zur Abstimmung</span>';
     billTitleText.textContent = item.bill_titel || item.vote_titel || '';
@@ -2020,13 +2037,12 @@
   /* ===================================================================
      FIELD 3: reasons
      Coded after Position, only for texts screened as an explanation of a
-     vote at T0. Q1 highlights the reasons; every later question but Q7
-     is scoped to those passages.
+     vote at T0. Q1 highlights the reasons; the later questions cover the whole text.
      =================================================================== */
 
   var F3_SPEC = [
     { id:'q2', task:2, code:'Q2', title:'Her own party or Fraktion', kind:'gate',
-      gate:'Does any highlighted reason mention the MP’s own party, her Fraktion, or her party’s members?',
+      gate:'Does the text mention the MP’s own party, her Fraktion, or her party’s members?',
       rule:'The Fraktion is the parliamentary group. Party members and the local party branch belong here, not under Voters. A bare <i>wir</i> is not a mention.',
       subs:[
         {id:'a', code:'Q2a', label:'Which one?', type:'multi', opts:[
@@ -2034,47 +2050,35 @@
           'Her party’s leadership',
           'Her party’s program, or a party congress decision',
           'Party members or the local party branch']},
-        {id:'b', code:'Q2b', label:'What do the highlighted reasons say about it? (all reasons together)', type:'multi', opts:[
+        {id:'b', code:'Q2b', label:'What does the text say about it?', type:'multi', opts:[
           'It achieved or negotiated something in this bill',
           'Its position or earlier decisions bind her',
           'She disagrees with it',
           'She refers to her own role in it (an office, rapporteur, negotiator)',
           'Other (comment required)']},
-        {id:'c', code:'Q2c', label:'Taking all the highlighted reasons together, is what they say about her party or Fraktion positive, negative, neutral or mixed?', type:'single',
+        {id:'c', code:'Q2c', label:'Taking the whole text, is what it says about her party or Fraktion positive, negative, neutral or mixed?', type:'single',
           opts:['Positive','Negative','Neutral','Mixed']}
       ]},
     { id:'q3', task:3, code:'Q3', title:'The coalition and the government', kind:'gate',
-      gate:'Does any highlighted reason mention the coalition or the government?',
+      gate:'Does the text mention the coalition or the government?',
       rule:'The coalition is the parties that together support the government, plus the coalition agreement. The government is the chancellor, ministers and ministries — present or previous. Another party counts as a <i>coalition partner</i> only where the text calls it one.',
       subs:[
         {id:'a', code:'Q3a', label:'Which one?', type:'multi', opts:[
           'The coalition or the coalition agreement',
           'A coalition partner (only where the text calls it a partner)',
           'The federal government, a minister or a ministry']},
-        {id:'b', code:'Q3b', label:'What do the highlighted reasons say about it? (all reasons together)', type:'multi', opts:[
+        {id:'b', code:'Q3b', label:'What does the text say about it?', type:'multi', opts:[
           'It achieved or negotiated something in this bill',
           'She votes this way to keep the coalition working, or because the coalition agreement requires it',
           'It insisted on or blocked something in this bill',
           'It caused a problem or failed to act',
           'Other (comment required)']},
-        {id:'c', code:'Q3c', label:'Taking all the highlighted reasons together, is what they say about the coalition and government positive, negative, neutral or mixed?', type:'single',
+        {id:'c', code:'Q3c', label:'Taking the whole text, is what it says about the coalition and government positive, negative, neutral or mixed?', type:'single',
           hint:'If it is positive about one thing ticked above and negative about another, answer Mixed and say which in the comment.',
           opts:['Positive','Negative','Neutral','Mixed']}
       ]},
-    { id:'q4', task:4, code:'Q4', title:'Rival parties', kind:'gate',
-      gate:'Does any highlighted reason mention a rival party?',
-      rule:'Any party other than the MP’s own that the text does not call a coalition partner, including the opposition in general.',
-      subs:[
-        {id:'a', code:'Q4a', label:'Which one?', type:'multi', opts:[
-          'A named party or Fraktion','The opposition in general','Other parties in general']},
-        {id:'b', code:'Q4b', label:'What part does it play in the highlighted reasons, taken together?', type:'single',
-          hint:'Criticism that sits alongside her own ground, rather than being it, is Other with a comment.',
-          opts:['Criticism of the party is the ground for her vote',
-                'Her vote depends on which other parties support or oppose the bill',
-                'Other (comment required)']}
-      ]},
     { id:'q5', task:5, code:'Q5', title:'Voters', kind:'gate',
-      gate:'Does any highlighted reason mention voters, or the MP’s district or constituency?',
+      gate:'Does the text mention voters, or the MP’s district or constituency?',
       rule:'The constituency does <b>not</b> have to be named: <i>mein Wahlkreis</i>, <i>die Menschen vor Ort</i>, <i>bei mir in der Region</i> all count. General references to the public (<i>die Bürgerinnen und Bürger</i>) do not.',
       subs:[
         {id:'a', code:'Q5a', label:'Whom?', type:'multi', opts:[
@@ -2089,7 +2093,7 @@
       ]},
     { id:'q7', task:7, code:'Q7', title:'Groups and organisations', kind:'repeat', unit:'group',
       gate:'Does the text discuss a specific group of people, an organisation, or disadvantaged people in general?',
-      rule:'<b>This question covers the whole text</b>, not only the highlighted reasons. A union, an employers’ or business association, a church body, an NGO or a citizens’ initiative is an entry here too: tick <i>An organisation</i> as its type. Parties, Fraktionen, ministries, courts and other state bodies do not count. The MP’s own membership of an organisation belongs in Task 9. The <i>members</i> of a faith are a group; the body that speaks for them is an organisation: make two entries.',
+      rule:'A union, an employers’ or business association, a church body, an NGO or a citizens’ initiative is an entry here too: tick <i>An organisation</i> as its type. Parties, Fraktionen, ministries, courts and other state bodies do not count. The MP’s own membership of an organisation belongs in Task 9. The <i>members</i> of a faith are a group; the body that speaks for them is an organisation: make two entries.',
       subs:[
         {id:'b', code:'Q7b', label:'Does the group appear in a highlighted reason?', type:'single', opts:['Yes','No']},
         {id:'c', code:'Q7c', label:'What kind of group or organisation is it?', type:'multi', cap:3, opts:[
@@ -2121,7 +2125,7 @@
           opts:['Better off','Worse off','Both: different parts of the group, or in different respects','Not said']}
       ]},
     { id:'q9', task:9, code:'Q9', title:'The MP’s own life', kind:'gate',
-      gate:'Does any highlighted reason refer to the MP’s own life, background or experience?',
+      gate:'Does the text refer to the MP’s own life, background or experience?',
       rule:'Her life outside politics. Her political career, offices and committee work do not count — an office in her own party belongs in Task 2.',
       subs:[
         {id:'a', code:'Q9a', label:'What part of her life?', type:'multi', opts:[
@@ -2133,7 +2137,7 @@
           'Other (comment required)']}
       ]},
     { id:'q10', task:10, code:'Q10', title:'Principles and law', kind:'gate',
-      gate:'Does any highlighted reason appeal to a legal norm, a principle or a value?',
+      gate:'Does the text appeal to a legal norm, a principle or a value?',
       rule:'If the passage names a legal source, it counts as law. Otherwise it counts as a principle or value. If both apply, tick both.',
       subs:[
         {id:'a', code:'Q10a', label:'What does it appeal to?', type:'multi', opts:[
