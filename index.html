@@ -2095,7 +2095,7 @@
       gate:'Does the text discuss a specific group of people, an organisation, or disadvantaged people in general?',
       rule:'A union, an employers’ or business association, a church body, an NGO or a citizens’ initiative is an entry here too: tick <i>An organisation</i> as its type. Parties, Fraktionen, ministries, courts and other state bodies do not count. The MP’s own membership of an organisation belongs in Task 9. The <i>members</i> of a faith are a group; the body that speaks for them is an organisation: make two entries.',
       subs:[
-        {id:'b', code:'Q7b', label:'Does the group appear in a highlighted reason?', type:'single', opts:['Yes','No']},
+        {id:'b', code:'Q7b', label:'Does the group or organisation appear in a highlighted reason?', type:'single', opts:['Yes','No']},
         {id:'c', code:'Q7c', label:'What kind of group or organisation is it?', type:'multi', cap:3, opts:[
           'Origin or migration (where the people or their families came from)',
           'Ethnicity or skin colour','Religion or religious community',
@@ -2166,7 +2166,7 @@
     return null;
   }
   function f3Fresh(){
-    var o = { reasons:[], comment:'' };
+    var o = { reasons:[], comment:'', noReason:false };
     F3_SPEC.forEach(function(q){
       if(q.kind === 'repeat') o[q.id] = { gate:null, items:[] };
       else {
@@ -2270,7 +2270,7 @@
     if(f3Active.kind === 'reason'){
       var r = null, i;
       if(f3Active.recId) for(i=0;i<s.reasons.length;i++) if(s.reasons[i].id === f3Active.recId) r = s.reasons[i];
-      if(!r){ r = { id:'r' + (++f3Seq), text:'', marks:[] }; s.reasons.push(r); f3Active.recId = r.id; }
+      if(!r){ r = { id:'r' + (++f3Seq), text:'', marks:[] }; s.reasons.push(r); f3Active.recId = r.id; s.noReason = false; }
       r.text = r.text ? (r.text + ' … ' + text) : text;
       r.marks.push(mid);
       cls = 'reason'; tag = String(f3ReasonIndex(r.id) + 1);
@@ -2409,7 +2409,8 @@
       '<div class="module-body">' +
       '<div class="rule-box"><span class="tag">Q1</span><span>Highlight each passage where the MP says why she votes as she does, or why she has doubts. <b>One reason is one distinct ground.</b> Highlight the shortest passage that states it. Do not highlight the vote sentence, a description of the bill, thanks, demands or promises. There is no limit on the number of reasons.</span></div>';
     if(!s.reasons.length){
-      html += '<div class="f3-hint">No reasons yet. Click <b>Add a reason</b>, then select the words in the text.</div>';
+      html += '<div class="f3-hint">No reasons yet. Click <b>Add a reason</b>, then select the words in the text.</div>' +
+        '<label class="no-quote-row"><input type="checkbox" id="f3-noreason"' + (s.noReason ? ' checked' : '') + '> The text states no reason (for example, a bare declaration of the vote).</label>';
     }
     s.reasons.forEach(function(r, i){
       html += '<div class="f3-rec"><div class="f3-rec-head">' +
@@ -2471,11 +2472,14 @@
     if(gates.length) txt += ' · ' + gates.join(', ');
     if(missing.length) txt += ' · ' + missing.length + ' question' + (missing.length === 1 ? '' : 's') + ' unanswered';
     f3RecordValue.textContent = txt;
-    var ready = n > 0 && missing.length === 0;
+    if(n === 0 && s.noReason) f3RecordValue.textContent = 'no reason stated' + (gates.length ? ' · ' + gates.join(', ') : '') + (missing.length ? ' · ' + missing.length + ' question' + (missing.length === 1 ? '' : 's') + ' unanswered' : '');
+    var ready = (n > 0 || s.noReason) && missing.length === 0;
     f3ConfirmBtn.classList.toggle('ready', ready);
   }
   function f3Wire(){
     var s = f3State();
+    var nr = document.getElementById('f3-noreason');
+    if(nr) nr.addEventListener('change', function(){ s.noReason = nr.checked; f3Render(); });
     var add = document.getElementById('f3-add-reason');
     if(add) add.addEventListener('click', function(){
       f3SetActive('reason', null, null);
@@ -2577,7 +2581,7 @@
     var coder = (coderInput.value || '').trim();
     if(!coder){ coderInput.focus(); return; }
     var item = curItem(), s = f3State();
-    var rec = { textId:item.text_id, coder:coder, reasons:[], comment:s.comment.trim() || null,
+    var rec = { textId:item.text_id, coder:coder, reasons:[], noReasonStated:!!s.noReason, comment:s.comment.trim() || null,
                 confirmedAt:new Date().toISOString() };
     s.reasons.forEach(function(r){ rec.reasons.push(r.text); });
     F3_SPEC.forEach(function(q){
@@ -2627,7 +2631,7 @@
   //   library(jsonlite); d$field3_reasons |> lapply(fromJSON)
   // Everything text-level stays a plain column.
   function f3Columns(){
-    var cols = ['field3_status', 'field3_n_reasons', 'field3_reasons'];
+    var cols = ['field3_status', 'field3_n_reasons', 'field3_reasons', 'field3_no_reason_stated'];
     F3_SPEC.forEach(function(q){
       cols.push('field3_' + q.code + '_gate');
       if(q.kind === 'repeat'){
@@ -2649,7 +2653,7 @@
       for(var i=0;i<blanks;i++) out.push('');
       return out;
     }
-    out.push(status || 'coded', (f3.reasons || []).length, JSON.stringify(f3.reasons || []));
+    out.push(status || 'coded', (f3.reasons || []).length, JSON.stringify(f3.reasons || []), f3.noReasonStated ? 'yes' : 'no');
     F3_SPEC.forEach(function(q){
       var st = f3[q.id] || {};
       out.push(st.gate === null || st.gate === undefined ? '' : (st.gate ? 'yes' : 'no'));
