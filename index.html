@@ -1703,7 +1703,7 @@
   /* ===================== per-item render ===================== */
   var VOTE_DE = { yes:'Yes', no:'No', abstain:'Abstain' };
   function voteLabel(v){ return v ? VOTE_DE[v] : null; }
-  function autoNoLine(item){ return item.line_status === 'no_line_fraktionslos' || item.line_status === 'unwhipped'; }
+  function autoNoLine(item){ return item.line_status === 'no_line_fraktionslos' || item.line_status === 'unwhipped' || item.line_status === 'free_vote'; }
   function readFromText(kind){ return kind === 'novote' || kind === 'noballots'; }
   // kind: 'same' | 'differs' | 'noline' (auto U-POS) | 'novote' | 'noballots'
   function givenKind(item){
@@ -1714,6 +1714,7 @@
   }
   function noLineReason(item){
     if(item.line_status === 'no_line_fraktionslos') return 'The MP has no Fraktion, so there is no party line.';
+    if(item.line_status === 'free_vote') return 'The Fraktion released this vote (free vote): it took no position, so there is no line.';
     if(item.line_status === 'unwhipped') return 'No clear line: the largest option has only ' + Math.round((item.line_share || 0) * 100) + '% of the Fraktion\'s cast votes (less than 60%).';
     return 'No ballots were found for this Fraktion on this vote.';
   }
@@ -1727,6 +1728,11 @@
     var unitCard;
     if(item.line_status === 'no_line_fraktionslos'){
       unitCard = '<div class="given-card"><span class="gk">Fraktion <span class="given-badge">given</span></span><span class="gv">none (fraktionslos)</span><span class="gd">'+escapeHtml(noLineReason(item))+'</span></div>';
+    } else if(item.line_status === 'free_vote'){
+      var fcounts = 'Yes '+c.yes+' · No '+c.no+' · Abstain '+c.abstain+' of '+item.unit_cast+' cast';
+      unitCard = '<div class="given-card"><span class="gk">'+escapeHtml(item.unit || item.fraktion)+' — raw votes <span class="given-badge">given</span></span>'+
+        '<span class="gv">Free vote</span>'+
+        '<span class="gd">'+escapeHtml(fcounts)+'. '+(item.line ? 'Most of the Fraktion voted '+escapeHtml(voteLabel(item.line))+' ('+Math.round((item.line_share||0)*100)+'% of cast votes). ' : '')+escapeHtml(noLineReason(item))+'</span></div>';
     } else {
       var counts = 'Yes '+c.yes+' · No '+c.no+' · Abstain '+c.abstain+' of '+item.unit_cast+' cast';
       var lineTxt = item.line ? ('Line: ' + voteLabel(item.line) + ' (' + Math.round((item.line_share||0)*100) + '% of cast votes)') : 'No clear line';
@@ -1758,6 +1764,7 @@
     var cmp = document.getElementById('given-compare');
     if(kind === 'same') cmp.innerHTML = '<b>Comparison:</b> the MP\'s vote ('+voteLabel(item.mp_vote)+') is the same as the line ('+voteLabel(item.line)+'). Loyalty or Yes-But: decide whether the text states a reservation.';
     else if(kind === 'differs') cmp.innerHTML = '<b>Comparison:</b> the MP\'s vote ('+voteLabel(item.mp_vote)+') differs from the line ('+voteLabel(item.line)+'). This is Defection.';
+    else if(kind === 'noline' && item.line_status === 'free_vote') cmp.innerHTML = '<b>Comparison:</b> not possible, the Fraktion released this vote, so there is no line (the majority shown above is information only). <b>Position is set automatically to Unknown Position (U-POS).</b> Nothing to code here; continue.';
     else if(kind === 'noline') cmp.innerHTML = '<b>Comparison:</b> not possible, there is no line. <b>Position is set automatically to Unknown Position (U-POS).</b> Nothing to code here; continue.';
     else if(kind === 'noballots') cmp.innerHTML = '<b>Comparison:</b> no ballots were found for this vote. Read the MP\'s vote and the party line from the text (Task 1).';
     else cmp.innerHTML = '<b>Comparison:</b> the MP\'s vote is not given. Read it from the text (Task 1), then compare it with the line ('+voteLabel(item.line)+').';
