@@ -1065,6 +1065,7 @@
     <div class="record">
       <span class="rlabel">Field 1 record</span>
       <span class="rvalue" id="topic-record-value"><em>what kind of statement is this?</em></span>
+      <button class="record-btn ready skip-btn" id="topic-prev-btn" type="button" title="Reopen the text you finished last, to correct it">← Previous text</button>
       <button class="record-btn ready skip-btn" id="topic-skip-btn" type="button">Skip this text →</button>
       <button class="record-btn" id="topic-confirm-btn" type="button">Confirm topic → Position</button>
     </div>
@@ -1232,6 +1233,7 @@
     <h2>All 100 texts coded — thank you.</h2>
     <p>Please send your answers back: click <b>Copy as text</b> below and paste it into your reply email.</p>
     <div style="max-width:640px;margin:1.5rem auto 0;text-align:left">
+      <p><button class="record-btn ready" id="done-prev-btn" type="button">← Back to the last text, to correct it</button></p>
       <span id="download-block-done"><button class="record-btn ready" id="download-answers-btn-done" type="button">Download as Excel (.csv) →</button>
       <span id="download-status-done" style="margin-left:0.7rem;font-size:0.82rem;color:var(--ink-soft)"></span></span>
       <p class="evidence-hint" id="copy-hint-done">To send your answers: click <b>Copy as text</b>, then paste it into your reply email. (If a download button is shown above, you can use that instead.)</p>
@@ -1874,6 +1876,7 @@
       activeScreen.style.display = 'none';
       doneScreen.style.display = '';
       refreshExport();
+      updatePrevButtons();
       return;
     }
     if(pos >= queue.length) pos = 0;
@@ -1905,6 +1908,13 @@
       if(btn) btn.classList.add('selected');
     }
     updatePositionRecord();
+    // continue at the first step not yet confirmed (after a reload or a skip); a finished text reopened for a
+    // correction starts at Topic
+    var rec0 = allRecords[curItem().text_id];
+    if(rec0 && !rec0.field3 && rec0.field1 && rec0.field1.statementType === 'vote' && s.statementType === 'vote'){
+      phase = rec0.field2 ? 'reasons' : 'position';
+    }
+    updatePrevButtons();
     setPhaseUI();
     renderOwnAnswer();
     refreshExport();
@@ -1983,16 +1993,93 @@
     } catch(e){ alert('This is not a valid progress code. Paste the complete text you copied earlier.'); }
   }
 
+  // a text is finished when Reasons is confirmed, or when T0 screened it out
+  function isFinished(id){
+    var r = allRecords[id];
+    return !!(r && (r.field3 || (r.field2 && r.field2.autoFromT0)));
+  }
   function skipCurrent(){
     var id = queue[pos];
     queue.splice(pos, 1);
-    queue.push(id);
+    if(!isFinished(id)) queue.push(id);   // a reopened finished text is closed again, unchanged
     // leave any half-entered answers in itemState so they're still there when it resurfaces
     saveLocal();
     loadItem();
   }
   topicSkipBtn.addEventListener('click', skipCurrent);
   positionSkipBtn.addEventListener('click', skipCurrent);
+
+  /* ---------- reopen a finished text to correct it ---------- */
+  function lastConfirmed(id){
+    var r = allRecords[id] || {}, t = '';
+    ['field1', 'field2', 'field3'].forEach(function(k){ if(r[k] && r[k].confirmedAt && r[k].confirmedAt > t) t = r[k].confirmedAt; });
+    return t;
+  }
+  // order in which texts were finished (saved with the records), so 'Previous text' goes back exactly
+  function markFinished(id){
+    var max = 0;
+    Object.keys(allRecords).forEach(function(k){ max = Math.max(max, allRecords[k].finishOrder || 0); });
+    allRecords[id].finishOrder = max + 1;
+  }
+  function finishedIds(){
+    return ALL_IDS.filter(function(id){ return queue.indexOf(id) < 0 && isFinished(id); })
+      .sort(function(a, b){
+        var oa = allRecords[a].finishOrder || 0, ob = allRecords[b].finishOrder || 0;
+        if(oa !== ob) return ob - oa;
+        return lastConfirmed(b) < lastConfirmed(a) ? -1 : lastConfirmed(b) > lastConfirmed(a) ? 1 : 0;
+      });
+  }
+  // texts finished before the working state was kept: rebuild it from the saved records (highlights are found by their words)
+  function stateFromRecords(id){
+    var r = allRecords[id] || {}, f1 = r.field1 || {}, f2 = r.field2 || {}, s = freshState();
+    s.statementType = f1.statementType || null; s.major = f1.major || null; s.minors = (f1.minors || []).slice(); s.topicComment = f1.comment || '';
+    if(!f2.autoFromT0){
+      s.category = f2.category || null; s.evidenceQuote = f2.evidenceQuote || ''; s.noQuoteInText = !!f2.noQuoteInText; s.positionComment = f2.comment || '';
+    }
+    if(r.field3){
+      f3BumpSeq();
+      var f3 = r.field3, o = f3Fresh();
+      function marksFor(text){ return (text || '') ? text.split(' … ').map(function(){ return 'm' + (++f3Seq); }) : []; }
+      o.comment = f3.comment || ''; o.noReason = !!f3.noReasonStated;
+      o.reasons = (f3.reasons || []).map(function(t){ return { id:'r' + (++f3Seq), text:t, marks:marksFor(t) }; });
+      F3_SPEC.forEach(function(q){
+        var src = f3[q.id] || {}, st = o[q.id];
+        st.gate = (src.gate === true || src.gate === false) ? src.gate : null;
+        if(q.kind === 'repeat'){
+          st.items = (src.items || []).map(function(it){
+            var rec = { id:'x' + (++f3Seq), text:it.text || '', marks:marksFor(it.text) };
+            q.subs.forEach(function(sb){ var v = it[sb.code]; rec[sb.id] = (v === undefined || v === null) ? ((sb.type === 'multi') ? [] : null) : v; });
+            return rec;
+          });
+        } else if(st.gate === true){
+          st.ev = src.evidence || ''; st.marks = marksFor(src.evidence);
+          q.subs.forEach(function(sb){ var v = src[sb.code]; if(v !== undefined && v !== null) st[sb.id] = v; });
+        }
+      });
+      s.f3 = o;
+    }
+    return s;
+  }
+  function reopenPrevious(){
+    var ids = finishedIds();
+    if(!ids.length) return;
+    var id = ids[0];
+    if(!itemState[id]) itemState[id] = stateFromRecords(id);
+    if(queue.length === 0){ doneScreen.style.display = 'none'; activeScreen.style.display = ''; }
+    queue.splice(pos, 0, id);
+    saveLocal();
+    loadItem();
+  }
+  function updatePrevButtons(){
+    var any = finishedIds().length > 0;
+    ['topic-prev-btn', 'done-prev-btn'].forEach(function(bid){ var b = document.getElementById(bid); if(b) b.style.display = any ? '' : 'none'; });
+    var reopened = queue.length > 0 && isFinished(queue[pos]);
+    [topicSkipBtn, positionSkipBtn, document.getElementById('f3-skip-btn')].forEach(function(b){
+      if(b) b.textContent = reopened ? 'Close without changes →' : 'Skip this text →';
+    });
+  }
+  document.getElementById('topic-prev-btn').addEventListener('click', reopenPrevious);
+  document.getElementById('done-prev-btn').addEventListener('click', reopenPrevious);
 
   topicConfirmBtn.addEventListener('click', function(){
     if(!topicConfirmBtn.classList.contains('ready')) return;
@@ -2017,8 +2104,9 @@
         givenFraktion: item.fraktion, givenMpVote: item.mp_vote || null, givenLine: item.line || null, givenLineStatus: item.line_status,
         comment: null, confirmedAt: new Date().toISOString(), autoFromT0: true
       };
+      delete allRecords[item.text_id].field3;
+      markFinished(item.text_id);
       queue.splice(pos, 1);
-      delete itemState[item.text_id];
       saveLocal();
       loadItem();
       return;
@@ -2570,16 +2658,47 @@
     var s = f3State();
     return F3_SPEC.filter(function(q){ return s[q.id].gate === null; });
   }
+  // what a 'yes' still needs (codebook: 'If yes, highlight the words'; every follow-up shown is answered; 'Other' needs a comment)
+  function f3Incomplete(){
+    var s = f3State(), out = [], other = false;
+    function answered(sb, holder){
+      var v = holder[sb.id];
+      if(Object.prototype.toString.call(v) === '[object Array]'){
+        if(v.some(function(x){ return /comment required/.test(x); })) other = true;
+        return v.length > 0;
+      }
+      if(typeof v === 'string' && /comment required/.test(v)) other = true;
+      return v !== null && v !== undefined && v !== '';
+    }
+    F3_SPEC.forEach(function(q){
+      var st = s[q.id];
+      if(!st || st.gate !== true) return;
+      if(q.kind === 'repeat'){
+        var items = st.items || [];
+        if(!items.length){ out.push(q.code + ': add a ' + (q.unit || 'record')); return; }
+        items.forEach(function(rec, i){
+          var label = q.code + ' ' + (q.unit || 'record') + ' ' + (i + 1);
+          if(!(rec.marks && rec.marks.length) && !(rec.text || '').trim()) out.push(label + ': highlight it');
+          q.subs.forEach(function(sb){ if(f3SubVisible(sb, rec) && !answered(sb, rec)) out.push(label + ': ' + sb.code); });
+        });
+      } else {
+        if(!(st.marks && st.marks.length) && !(st.ev || '').trim()) out.push(q.code + ': highlight the words');
+        q.subs.forEach(function(sb){ if(f3SubVisible(sb, st) && !answered(sb, st)) out.push(sb.code); });
+      }
+    });
+    if(other && !(s.comment || '').trim()) out.push('comment for "Other"');
+    return out;
+  }
   function f3UpdateRecord(){
     if(!f3RecordValue) return;
-    var s = f3State(), n = s.reasons.length, missing = f3Missing();
+    var s = f3State(), n = s.reasons.length, missing = f3Missing(), todo = f3Incomplete();
     var gates = F3_SPEC.filter(function(q){ return s[q.id].gate === true; }).map(function(q){ return q.code; });
-    var txt = n + (n === 1 ? ' reason' : ' reasons');
+    var txt = (n === 0 && s.noReason) ? 'no reason stated' : n + (n === 1 ? ' reason' : ' reasons');
     if(gates.length) txt += ' · ' + gates.join(', ');
     if(missing.length) txt += ' · ' + missing.length + ' question' + (missing.length === 1 ? '' : 's') + ' unanswered';
+    if(todo.length) txt += ' · still needed: ' + todo.join('; ');
     f3RecordValue.textContent = txt;
-    if(n === 0 && s.noReason) f3RecordValue.textContent = 'no reason stated' + (gates.length ? ' · ' + gates.join(', ') : '') + (missing.length ? ' · ' + missing.length + ' question' + (missing.length === 1 ? '' : 's') + ' unanswered' : '');
-    var ready = (n > 0 || s.noReason) && missing.length === 0;
+    var ready = (n > 0 || s.noReason) && missing.length === 0 && todo.length === 0;
     f3ConfirmBtn.classList.toggle('ready', ready);
   }
   function f3Wire(){
@@ -2679,7 +2798,7 @@
   }
 
   if(f3CommentEl) f3CommentEl.addEventListener('input', function(){
-    f3State().comment = f3CommentEl.value; saveLocal();
+    f3State().comment = f3CommentEl.value; saveLocal(); f3UpdateRecord();
   });
   if(f3SkipBtn) f3SkipBtn.addEventListener('click', skipCurrent);
   if(f3ConfirmBtn) f3ConfirmBtn.addEventListener('click', function(){
@@ -2687,6 +2806,7 @@
     var coder = (coderInput.value || '').trim();
     if(!coder){ coderInput.focus(); return; }
     var item = curItem(), s = f3State();
+    if(!(allRecords[item.text_id] && allRecords[item.text_id].field2)) return;   // Reasons only after a confirmed Position
     var rec = { textId:item.text_id, coder:coder, reasons:[], noReasonStated:!!s.noReason, comment:s.comment.trim() || null,
                 confirmedAt:new Date().toISOString() };
     s.reasons.forEach(function(r){ rec.reasons.push(r.text); });
@@ -2706,8 +2826,8 @@
     });
     if(!allRecords[item.text_id]) allRecords[item.text_id] = {};
     allRecords[item.text_id].field3 = rec;
+    markFinished(item.text_id);
     queue.splice(pos, 1);
-    delete itemState[item.text_id];
     saveLocal();
     loadItem();
   });
@@ -2797,7 +2917,7 @@
         item.mp_vote || '', item.unit_counts ? ('Y' + item.unit_counts.yes + '/N' + item.unit_counts.no + '/A' + item.unit_counts.abstain) : '', item.line || '', item.line_status || '', item.given_cosigned ? 'yes' : 'no', item.given_n_signers,
         f1.statementType || '',
         f1.major || '', (f1.minors || []).join('+'), f1.comment || '', f1.confirmedAt || '',
-        f2.category || '', f2.contradictsGiven ? 'yes' : (f2.category ? 'no' : ''), f2.evidenceQuote || '', f2.noQuoteInText ? 'yes' : 'no', f2.comment || '', f2.confirmedAt || '', f2.autoFromT0 ? 'not_a_vote_explanation' : (f2.autoFromNoLine || '')
+        f2.category || '', f2.contradictsGiven ? 'yes' : (f2.category ? 'no' : ''), f2.evidenceQuote || '', f2.category ? (f2.noQuoteInText ? 'yes' : 'no') : '', f2.comment || '', f2.confirmedAt || '', f2.autoFromT0 ? 'not_a_vote_explanation' : (f2.autoFromNoLine || '')
       ].concat(f3 ? f3Cells(f3) : f3Cells(null, f2.autoFromT0 ? 'skipped_not_a_vote_explanation' : ''));
       lines.push(row.map(csvCell).join(','));
     });
