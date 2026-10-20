@@ -1888,6 +1888,8 @@
     topicCommentEl.value = s.topicComment;
     minorModule.classList.remove('visible');
     f3ClearMarks();
+    f3BumpSeq();
+    f3ReapplyMarks();
     if(f3CommentEl) f3CommentEl.value = (s.f3 && s.f3.comment) || '';
     f3Active = { kind:'reason', qid:null, recId:null };
     if(f3HintEl) f3HintEl.textContent = 'Select words in the text, then click the button that appears. Click a highlight to remove it.';
@@ -2316,6 +2318,15 @@
       o.marks.push(mid);
       tag = f3SpecById(f3Active.qid).code.replace(/^Q/, '');
     }
+    // character offsets in the item text, saved with the state so the mark can be redrawn after a reload (bead bh7)
+    var start = f3TextPos(range.startContainer, range.startOffset), end = f3TextPos(range.endContainer, range.endOffset);
+    if(f3WrapMark(range, mid, cls, tag, text)){
+      if(!s.hl) s.hl = {};
+      s.hl[mid] = { start:start, end:end };
+    }
+    f3Render();
+  }
+  function f3WrapMark(range, mid, cls, tag, text){
     try {
       var mark = document.createElement('span');
       mark.className = 'f3-hl ' + cls;
@@ -2325,13 +2336,80 @@
       var sup = document.createElement('span');
       sup.className = 'tagno'; sup.textContent = tag;
       mark.appendChild(sup);
-    } catch(e){ /* overlapping selection: text captured, visual mark skipped */ }
-    f3Render();
+      return true;
+    } catch(e){ return false; /* overlapping selection: text captured, visual mark skipped */ }
+  }
+  // position in the item text (the tag numbers inside earlier marks do not count)
+  function f3TextPos(container, offset){
+    var r = document.createRange();
+    r.selectNodeContents(eovTextEl);
+    r.setEnd(container, offset);
+    var frag = r.cloneContents();
+    Array.prototype.forEach.call(frag.querySelectorAll('.tagno'), function(x){ x.parentNode.removeChild(x); });
+    return frag.textContent.length;
+  }
+  function f3RangeAt(start, end){
+    var walker = document.createTreeWalker(eovTextEl, NodeFilter.SHOW_TEXT, {
+      acceptNode: function(n){ return (n.parentNode && n.parentNode.classList && n.parentNode.classList.contains('tagno')) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; }
+    });
+    var pos = 0, n, r = document.createRange(), haveStart = false;
+    while((n = walker.nextNode())){
+      var len = n.nodeValue.length;
+      if(!haveStart && start <= pos + len){ r.setStart(n, start - pos); haveStart = true; }
+      if(haveStart && end <= pos + len){ r.setEnd(n, end - pos); return r; }
+      pos += len;
+    }
+    return null;
+  }
+  // redraw the saved marks of the current text (after a reload, or when a skipped text comes back)
+  function f3ReapplyMarks(){
+    var s = curState().f3;
+    if(!s) return;
+    var plain = curItem().text || '', used = {}, changed = false;
+    function draw(owner, ownerText, cls, tagFn){
+      var parts = (ownerText || '').split(' … ');
+      (owner.marks || []).forEach(function(mid, k){
+        var p = s.hl && s.hl[mid];
+        if(!p){
+          // marks saved before positions were stored: find the captured words in the text
+          var t = parts.length === owner.marks.length ? parts[k] : '';
+          var at = t ? plain.indexOf(t) : -1;
+          while(at > -1 && used[at]) at = plain.indexOf(t, at + 1);
+          if(at < 0) return;
+          p = { start:at, end:at + t.length };
+          if(!s.hl) s.hl = {};
+          s.hl[mid] = p; changed = true;
+        }
+        used[p.start] = true;
+        var r = f3RangeAt(p.start, p.end);
+        if(r) f3WrapMark(r, mid, cls, tagFn(), plain.slice(p.start, p.end));
+      });
+    }
+    s.reasons.forEach(function(r, i){ draw(r, r.text, 'reason', function(){ return String(i + 1); }); });
+    F3_SPEC.forEach(function(q){
+      var st = s[q.id];
+      if(!st) return;
+      var tag = function(){ return q.code.replace(/^Q/, ''); };
+      if(q.kind === 'repeat') (st.items || []).forEach(function(rec){ draw(rec, rec.text, 'evid', tag); });
+      else if(st.marks) draw(st, st.ev, 'evid', tag);
+    });
+    if(changed) saveLocal();
+  }
+  // ids of reasons, records and marks continue after the highest saved one (else a new 'm1' could repeat an old id)
+  function f3BumpSeq(){
+    var max = f3Seq;
+    JSON.stringify(itemState).replace(/"(?:id|marks)":(?:"[rxm](\d+)"|\[([^\]]*)\])/g, function(all, one, list){
+      if(one) max = Math.max(max, +one);
+      if(list) list.replace(/"[rxm](\d+)"/g, function(a, d){ max = Math.max(max, +d); return a; });
+      return all;
+    });
+    f3Seq = max;
   }
   function f3RemoveCaptured(mark){
     var mid = mark.getAttribute('data-mid');
     var captured = mark.getAttribute('data-captured') || '';
     var s = f3State();
+    if(s.hl) delete s.hl[mid];
     function strip(obj, key){
       var v = obj[key] || '';
       if(v.indexOf(' … ' + captured) > -1) v = v.replace(' … ' + captured, '');

@@ -1718,16 +1718,29 @@
     if(item.line_status === 'unwhipped') return 'No clear line: the largest option has only ' + Math.round((item.line_share || 0) * 100) + '% of the Fraktion\'s cast votes (less than 60%).';
     return 'No ballots were found for this Fraktion on this vote.';
   }
+  function isSimple(item){ return String(item.vote_source || '').indexOf('simple_votes') === 0; }
   function renderGiven(item){
     var kind = givenKind(item);
+    var simple = isSimple(item);
     var c = item.unit_counts || {yes:0, no:0, abstain:0};
     var n = item.given_n_signers || 1;
     var sigVal = item.given_cosigned ? (n + ' MPs (joint statement)') : 'Single signer';
     var mpVal = item.mp_vote ? voteLabel(item.mp_vote) : 'not available';
     var mpNote = item.mp_vote ? 'recorded on the roll call' : 'no ballot found for this MP: read the vote from the text';
+    if(simple && !item.mp_vote){ mpVal = 'not recorded'; mpNote = 'simple vote (show of hands or standing vote): individual votes are not recorded, read the MP\u2019s vote from the text'; }
     var unitCard;
     if(item.line_status === 'no_line_fraktionslos'){
       unitCard = '<div class="given-card"><span class="gk">Fraktion <span class="given-badge">given</span></span><span class="gv">none (fraktionslos)</span><span class="gd">'+escapeHtml(noLineReason(item))+'</span></div>';
+    } else if(simple && item.line_status === 'free_vote'){
+      unitCard = '<div class="given-card"><span class="gk">'+escapeHtml(item.unit || item.fraktion)+' \u2014 position in the protocol <span class="given-badge">given</span></span>'+
+        '<span class="gv">Free vote</span>'+
+        '<span class="gd">'+(item.line ? 'The protocol records the Fraktion as voting '+escapeHtml(voteLabel(item.line))+' (information only). ' : '')+escapeHtml(noLineReason(item))+'</span></div>';
+    } else if(simple){
+      unitCard = '<div class="given-card"><span class="gk">'+escapeHtml(item.unit || item.fraktion)+' \u2014 position in the protocol <span class="given-badge">given</span></span>'+
+        '<span class="gv">'+escapeHtml(item.line ? voteLabel(item.line) : 'not stated')+'</span>'+
+        '<span class="gd">'+(item.line
+          ? 'Simple vote (show of hands or standing vote): the Fraktion\u2019s position as announced in the protocol. No counts or individual votes are recorded.'
+          : 'Simple vote: the protocol names no position for this Fraktion. Read the party line from the text.')+'</span></div>';
     } else if(item.line_status === 'free_vote'){
       var fcounts = 'Yes '+c.yes+' · No '+c.no+' · Abstain '+c.abstain+' of '+item.unit_cast+' cast';
       unitCard = '<div class="given-card"><span class="gk">'+escapeHtml(item.unit || item.fraktion)+' — raw votes <span class="given-badge">given</span></span>'+
@@ -1748,7 +1761,11 @@
       contextCards += '<div class="given-card" style="grid-column:1 / -1"><span class="gk">The vote is on <span class="given-badge">given</span></span><span class="gv">'+escapeHtml(KIND[item.vote_kind])+'</span>'+(kdesc ? '<span class="gd">'+escapeHtml(kdesc)+'</span>' : '')+'</div>';
     }
     var pb = item.proposed_by && item.proposed_by.length ? item.proposed_by.join(' \u00b7 ') : 'not available';
-    var pbDesc = item.proposed_by_own ? 'Includes the MP\u2019s own Fraktion.' : (item.proposed_by && item.proposed_by.length ? 'Does not include the MP\u2019s own Fraktion.' : '');
+    // own-Fraktion flag: true / false from the data; null = not comparable (a group of MPs, or a fraktionslos MP)
+    var isGroup = !!(item.proposed_by && item.proposed_by.length && /^Group of MPs/.test(item.proposed_by[0]));
+    var pbDesc = item.proposed_by_own === true ? 'Includes the MP\u2019s own Fraktion.'
+      : item.proposed_by_own === false ? 'Does not include the MP\u2019s own Fraktion.'
+      : (isGroup ? 'A cross-party group of MPs: no Fraktion is the sponsor.' : '');
     if(item.vote_kind === 'recommendation' && item.proposed_by) pbDesc += ' Sponsor of the motion the committee reported on.';
     contextCards += '<div class="given-card"><span class="gk">Proposed by <span class="given-badge">given</span></span><span class="gv">'+escapeHtml(pb)+'</span>'+(pbDesc ? '<span class="gd">'+escapeHtml(pbDesc.trim())+'</span>' : '')+'</div>';
     var yesTxt = null;
@@ -1766,12 +1783,16 @@
     else if(kind === 'differs') cmp.innerHTML = '<b>Comparison:</b> the MP\'s vote ('+voteLabel(item.mp_vote)+') differs from the line ('+voteLabel(item.line)+'). This is Defection.';
     else if(kind === 'noline' && item.line_status === 'free_vote') cmp.innerHTML = '<b>Comparison:</b> not possible, the Fraktion released this vote, so there is no line (the majority shown above is information only). <b>Position is set automatically to Unknown Position (U-POS).</b> Nothing to code here; continue.';
     else if(kind === 'noline') cmp.innerHTML = '<b>Comparison:</b> not possible, there is no line. <b>Position is set automatically to Unknown Position (U-POS).</b> Nothing to code here; continue.';
+    else if(kind === 'noballots' && simple) cmp.innerHTML = '<b>Comparison:</b> the protocol names no position for this Fraktion, and individual votes are not recorded on a simple vote. Read the MP\'s vote and the party line from the text (Task 1).';
     else if(kind === 'noballots') cmp.innerHTML = '<b>Comparison:</b> no ballots were found for this vote. Read the MP\'s vote and the party line from the text (Task 1).';
+    else if(simple) cmp.innerHTML = '<b>Comparison:</b> the MP\'s own vote is not recorded on a simple vote. Read it from the text (Task 1), then compare it with the Fraktion\'s position in the protocol ('+voteLabel(item.line)+').';
     else cmp.innerHTML = '<b>Comparison:</b> the MP\'s vote is not given. Read it from the text (Task 1), then compare it with the line ('+voteLabel(item.line)+').';
     // task wording depends on what is given
     var ruleEl = document.getElementById('given-rule-text'), evTitle = document.getElementById('evidence-title'), evRule = document.getElementById('evidence-rule'), evTag = document.getElementById('evidence-tag'), nqRow = document.getElementById('no-quote-row');
     if(readFromText(kind)){
-      ruleEl.textContent = (kind === 'noballots' ? 'No ballots were found for this vote, so neither the MP\'s vote nor the line is supplied: read both from the text. ' : 'The Fraktion\'s raw votes and the line are supplied. The MP\'s own recorded vote could not be found for this text, so you read it from the text. ') + ' Defection means breaking with the MP\'s own Fraktion\'s line, full stop, whether or not that party sits in government.';
+      ruleEl.textContent = (simple
+          ? (kind === 'noballots' ? 'On this simple vote the protocol names no position for the Fraktion, so neither the MP\'s vote nor the line is supplied: read both from the text. ' : 'On a simple vote the Fraktion\'s position from the protocol is supplied as the line. Individual votes are not recorded, so you read the MP\'s vote from the text and compare it with that position. ')
+          : (kind === 'noballots' ? 'No ballots were found for this vote, so neither the MP\'s vote nor the line is supplied: read both from the text. ' : 'The Fraktion\'s raw votes and the line are supplied. The MP\'s own recorded vote could not be found for this text, so you read it from the text. ')) + ' Defection means breaking with the MP\'s own Fraktion\'s line, full stop, whether or not that party sits in government.';
       evTitle.textContent = 'MP\'s vote statement'; evTag.textContent = 'C2';
       evRule.textContent = 'Now point to your evidence. Locate the sentence(s) where the text reports the MP\'s own vote. Select it in the text and click "Use as evidence," or type it below. If no sentence states the vote, place the MP from the rest of the text (the reasons, the wording, what the text says about the party) and tick the box below. Choose Unknown Position only if nothing in the whole text lets you tell whether the MP voted with or against the line.';
       nqRow.style.display = '';
@@ -1867,6 +1888,8 @@
     topicCommentEl.value = s.topicComment;
     minorModule.classList.remove('visible');
     f3ClearMarks();
+    f3BumpSeq();
+    f3ReapplyMarks();
     if(f3CommentEl) f3CommentEl.value = (s.f3 && s.f3.comment) || '';
     f3Active = { kind:'reason', qid:null, recId:null };
     if(f3HintEl) f3HintEl.textContent = 'Select words in the text, then click the button that appears. Click a highlight to remove it.';
@@ -2295,6 +2318,15 @@
       o.marks.push(mid);
       tag = f3SpecById(f3Active.qid).code.replace(/^Q/, '');
     }
+    // character offsets in the item text, saved with the state so the mark can be redrawn after a reload (bead bh7)
+    var start = f3TextPos(range.startContainer, range.startOffset), end = f3TextPos(range.endContainer, range.endOffset);
+    if(f3WrapMark(range, mid, cls, tag, text)){
+      if(!s.hl) s.hl = {};
+      s.hl[mid] = { start:start, end:end };
+    }
+    f3Render();
+  }
+  function f3WrapMark(range, mid, cls, tag, text){
     try {
       var mark = document.createElement('span');
       mark.className = 'f3-hl ' + cls;
@@ -2304,13 +2336,80 @@
       var sup = document.createElement('span');
       sup.className = 'tagno'; sup.textContent = tag;
       mark.appendChild(sup);
-    } catch(e){ /* overlapping selection: text captured, visual mark skipped */ }
-    f3Render();
+      return true;
+    } catch(e){ return false; /* overlapping selection: text captured, visual mark skipped */ }
+  }
+  // position in the item text (the tag numbers inside earlier marks do not count)
+  function f3TextPos(container, offset){
+    var r = document.createRange();
+    r.selectNodeContents(eovTextEl);
+    r.setEnd(container, offset);
+    var frag = r.cloneContents();
+    Array.prototype.forEach.call(frag.querySelectorAll('.tagno'), function(x){ x.parentNode.removeChild(x); });
+    return frag.textContent.length;
+  }
+  function f3RangeAt(start, end){
+    var walker = document.createTreeWalker(eovTextEl, NodeFilter.SHOW_TEXT, {
+      acceptNode: function(n){ return (n.parentNode && n.parentNode.classList && n.parentNode.classList.contains('tagno')) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; }
+    });
+    var pos = 0, n, r = document.createRange(), haveStart = false;
+    while((n = walker.nextNode())){
+      var len = n.nodeValue.length;
+      if(!haveStart && start <= pos + len){ r.setStart(n, start - pos); haveStart = true; }
+      if(haveStart && end <= pos + len){ r.setEnd(n, end - pos); return r; }
+      pos += len;
+    }
+    return null;
+  }
+  // redraw the saved marks of the current text (after a reload, or when a skipped text comes back)
+  function f3ReapplyMarks(){
+    var s = curState().f3;
+    if(!s) return;
+    var plain = curItem().text || '', used = {}, changed = false;
+    function draw(owner, ownerText, cls, tagFn){
+      var parts = (ownerText || '').split(' … ');
+      (owner.marks || []).forEach(function(mid, k){
+        var p = s.hl && s.hl[mid];
+        if(!p){
+          // marks saved before positions were stored: find the captured words in the text
+          var t = parts.length === owner.marks.length ? parts[k] : '';
+          var at = t ? plain.indexOf(t) : -1;
+          while(at > -1 && used[at]) at = plain.indexOf(t, at + 1);
+          if(at < 0) return;
+          p = { start:at, end:at + t.length };
+          if(!s.hl) s.hl = {};
+          s.hl[mid] = p; changed = true;
+        }
+        used[p.start] = true;
+        var r = f3RangeAt(p.start, p.end);
+        if(r) f3WrapMark(r, mid, cls, tagFn(), plain.slice(p.start, p.end));
+      });
+    }
+    s.reasons.forEach(function(r, i){ draw(r, r.text, 'reason', function(){ return String(i + 1); }); });
+    F3_SPEC.forEach(function(q){
+      var st = s[q.id];
+      if(!st) return;
+      var tag = function(){ return q.code.replace(/^Q/, ''); };
+      if(q.kind === 'repeat') (st.items || []).forEach(function(rec){ draw(rec, rec.text, 'evid', tag); });
+      else if(st.marks) draw(st, st.ev, 'evid', tag);
+    });
+    if(changed) saveLocal();
+  }
+  // ids of reasons, records and marks continue after the highest saved one (else a new 'm1' could repeat an old id)
+  function f3BumpSeq(){
+    var max = f3Seq;
+    JSON.stringify(itemState).replace(/"(?:id|marks)":(?:"[rxm](\d+)"|\[([^\]]*)\])/g, function(all, one, list){
+      if(one) max = Math.max(max, +one);
+      if(list) list.replace(/"[rxm](\d+)"/g, function(a, d){ max = Math.max(max, +d); return a; });
+      return all;
+    });
+    f3Seq = max;
   }
   function f3RemoveCaptured(mark){
     var mid = mark.getAttribute('data-mid');
     var captured = mark.getAttribute('data-captured') || '';
     var s = f3State();
+    if(s.hl) delete s.hl[mid];
     function strip(obj, key){
       var v = obj[key] || '';
       if(v.indexOf(' … ' + captured) > -1) v = v.replace(' … ' + captured, '');
