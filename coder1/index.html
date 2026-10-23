@@ -997,7 +997,7 @@
         <div class="cat-grid" id="screen-grid">
           <button class="cat-btn" type="button" data-screen="vote">
             <span class="cn">Explanation of a vote</span>
-            <span class="cd">The text explains how and why the MP voted.</span>
+            <span class="cd">The text explains how and why the MP voted (Yes, No or abstention).</span>
           </button>
           <button class="cat-btn" type="button" data-screen="correction">
             <span class="cn">Correction of a wrongly cast vote</span>
@@ -1005,7 +1005,7 @@
           </button>
           <button class="cat-btn" type="button" data-screen="absence">
             <span class="cn">Explanation of absence</span>
-            <span class="cd">The text explains why the MP did not vote.</span>
+            <span class="cd">The MP did not take part in the vote. An abstention is a vote: choose Explanation of a vote.</span>
           </button>
           <button class="cat-btn" type="button" data-screen="other">
             <span class="cn">Other</span>
@@ -1023,7 +1023,7 @@
       <div class="module-body">
         <div class="rule-box">
           <span class="tag">T1</span>
-          <span><b>Mandatory, single.</b> Code the major topic of the decision being explained, anchored by the bill title. If the bill title is ambiguous or omnibus, code the major topic of the provision the text actually discusses instead.</span>
+          <span><b>Mandatory, single.</b> Code the major topic of what the text talks about. The bill title decides only when the text gives no topic of its own. Where the bill covers more than the text discusses, code the part the text discusses. Bundeswehr mandates are 16; for other recurring vote types see T3 in the codebook.</span>
         </div>
         <div class="major-grid" id="major-grid"></div>
         <div class="excluded-note">CAP majors 9 (Immigration) and 23 (Culture) are not used — this project follows the German scheme, where that content sits under major 2 (minor 230) and major 6 (minor 609). See the codebook, §1, note on majors 9 and 23.</div>
@@ -1101,12 +1101,12 @@
         <div class="cat-grid" id="cat-grid">
           <button class="cat-btn" type="button" data-cat="Loyalty">
             <span class="cn">Loyalty</span>
-            <span class="cd">The MP's vote is the same as the line, and the text states no reservation toward the party position.</span>
+            <span class="cd">The MP's vote is the same as the line, and the text states no reservation toward the party position or the measure it supports.</span>
             <span class="suggest-tag"></span>
           </button>
           <button class="cat-btn" type="button" data-cat="Yes-But">
             <span class="cn">Yes-But</span>
-            <span class="cd">The MP's vote is the same as the line, but the text states a reservation toward the party position.</span>
+            <span class="cd">The MP's vote is the same as the line, but the text states a reservation toward the party position or the measure it supports.</span>
             <span class="suggest-tag"></span>
           </button>
           <button class="cat-btn" type="button" data-cat="Defection">
@@ -1801,7 +1801,7 @@
     } else {
       ruleEl.textContent = 'The MP\'s own recorded vote, the Fraktion\'s raw votes and the line they define are supplied. The comparison uses raw votes only: whether the motion passed, who proposed it and what Yes means do not enter it; they tell you what was voted on so that you can read the text. The same vote as the line is Loyalty or Yes-But; a different vote is Defection; no line is U-POS. The text need not mention the party. Defection means breaking with the MP\'s own Fraktion\'s line, full stop, whether or not that party sits in government.';
       evTitle.textContent = 'Reservation in the text'; evTag.textContent = 'YES-BUT';
-      evRule.textContent = 'Required if you chose Yes-But: select the sentence that states the reservation, criticism or condition toward the party position, and click "Use as evidence," or type it below. For the other categories it is optional.';
+      evRule.textContent = 'Required if you chose Yes-But: select the sentence that states the reservation, criticism or condition toward the party position or the measure it supports, and click "Use as evidence," or type it below. For the other categories it is optional.';
       nqRow.style.display = 'none';
     }
     // no line (fraktionslos / no clear majority): U-POS is set automatically, nothing to code
@@ -1814,6 +1814,7 @@
   // Federal governments by date (sworn in -> next government). The coalition is looked up
   // from the date of the vote, not from the Wahlperiode: WP20 changed government on 6 Nov 2024.
   var GOVERNMENTS = [
+    {from:'2009-10-28', to:'2013-12-17', parties:'CDU/CSU · FDP', note:'Merkel II (acting from 22 Oct 2013)'},
     {from:'2013-12-17', to:'2018-03-14', parties:'CDU/CSU · SPD', note:'Merkel III'},
     {from:'2018-03-14', to:'2021-12-08', parties:'CDU/CSU · SPD', note:'Merkel IV'},
     {from:'2021-12-08', to:'2024-11-06', parties:'SPD · BÜNDNIS 90/DIE GRÜNEN · FDP', note:'Scholz'},
@@ -2210,14 +2211,15 @@
           'She names them but claims no relationship']}
       ]},
     { id:'q7', task:7, code:'Q7', title:'Groups and organisations', kind:'repeat', unit:'group',
-      gate:'Does the text discuss a specific group of people, an organisation, or disadvantaged people in general?',
-      rule:'A union, an employers’ or business association, a church body, an NGO or a citizens’ initiative is an entry here too: tick <i>An organisation</i> as its type. Parties, Fraktionen, ministries, courts and other state bodies do not count. The MP’s own membership of an organisation belongs in Task 9. The <i>members</i> of a faith are a group; the body that speaks for them is an organisation: make two entries.',
+      gate:'Does the text discuss a specific group of people, a political camp, an organisation, or disadvantaged people in general?',
+      rule:'A union, an employers’ or business association, a church body, an NGO or a citizens’ initiative is an entry here too: tick <i>An organisation</i> as its type. Parties, Fraktionen, ministries, courts, the Bundeswehr, the police and other state bodies do not count, nor do international and EU bodies (EU Commission, Euro group, NATO, UN). Soldiers or police officers as people are a group. People marked by a political orientation, camp or movement (<i>Rechtsextreme</i>, <i>Islamisten</i>) are a group; a named party is not, nor is a word for a phenomenon (<i>Rechtsextremismus</i>). The MP’s own membership of an organisation belongs in Task 9. The <i>members</i> of a faith are a group; the body that speaks for them is an organisation: make two entries.',
       subs:[
         {id:'b', code:'Q7b', label:'Does the group or organisation appear in a highlighted reason?', type:'single', opts:['Yes','No']},
         {id:'c', code:'Q7c', label:'What kind of group or organisation is it?', type:'multi', cap:3, opts:[
           'Origin or migration (where the people or their families came from)',
           'Ethnicity or skin colour','Religion or religious community',
           'Occupation or sector','Gender or sexuality','Income or class','Age','Disability or health',
+          'Political orientation, camp or movement (extremists, Islamists, populists; not a party)',
           'An organisation (a union, an employers’ or business association, a church body, an NGO, a citizens’ initiative)',
           'A disadvantaged or vulnerable population in general (no specific category named)',
           'Other (comment required)']},
@@ -2255,8 +2257,8 @@
           'Other (comment required)']}
       ]},
     { id:'q10', task:10, code:'Q10', title:'Principles and law', kind:'gate',
-      gate:'Does the text appeal to a legal norm, a principle or a value?',
-      rule:'If the passage names a legal source, it counts as law. Otherwise it counts as a principle or value. If both apply, tick both.',
+      gate:'Does the text appeal to a legal norm, a principle or a value as a ground for her vote?',
+      rule:'Tick only appeals that carry an argument. If the passage names a legal source, it counts as law. Otherwise it counts as a principle or value. If both apply, tick both. Not an appeal: a legal provision named only as the basis of the vote or the procedure; opinion markers such as <i>meines Erachtens</i> or <i>ich halte … für</i> (tick conscience or conviction only where the vote is presented as a matter of conscience or personal principle).',
       subs:[
         {id:'a', code:'Q10a', label:'What does it appeal to?', type:'multi', opts:[
           'The Basic Law or the constitution, or a ruling of a constitutional court',
